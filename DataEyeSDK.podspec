@@ -25,12 +25,12 @@ TODO: Add long description of the pod here.
   # s.screenshots     = 'www.example.com/screenshots_1', 'www.example.com/screenshots_2'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 'DataEyeSDK' => '100345612@qq.com' }
-  s.source           = { :git => 'https://gitlab.yeahmobi.com/yeahmobile/ios-sdk.git', :tag => s.version.to_s }
+  s.source           = { :git => 'https://github.com/tianwenshi/DataEyeSDK.git', :tag => s.version.to_s }
   # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
 
   s.ios.deployment_target = '11.0'
 
-  s.source_files = 'DataEyeSDK/Source/**/*'
+  s.source_files = 'DataEyeSDK/Classes/**/*'
   
   # s.resource_bundles = {
   #   'DataEyeSDK' => ['DataEyeSDK/Assets/*.png']
