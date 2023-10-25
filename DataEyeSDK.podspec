@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'DataEyeSDK'
-  s.version          = '0.1.0'
+  s.version          = '2.7.1'
   s.summary          = 'A short description of DataEyeSDK.'
 
 # This description is used to generate tags and improve search results.
@@ -28,7 +28,7 @@ TODO: Add long description of the pod here.
   s.source           = { :git => 'https://github.com/acct<blob>=0xE380816768705F49584E6C5257794B547559784C704E686D4C495A47544730597A6B474E5233756D35665A  430001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/DataEyeSDK.git', :tag => s.version.to_s }
   # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
 
-  s.ios.deployment_target = '10.0'
+  s.ios.deployment_target = '11.0'
 
   s.source_files = 'DataEyeSDK/Classes/**/*'
   

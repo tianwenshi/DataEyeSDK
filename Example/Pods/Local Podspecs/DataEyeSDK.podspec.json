@@ -1,0 +1,22 @@
+{
+  "name": "DataEyeSDK",
+  "version": "0.1.0",
+  "summary": "A short description of DataEyeSDK.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/acct<blob>=0xE380816768705F49584E6C5257794B547559784C704E686D4C495A47544730597A6B474E5233756D35665A  430001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/DataEyeSDK",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "acct<blob>=0xE380816768705F49584E6C5257794B547559784C704E686D4C495A47544730597A6B474E5233756D35665A  430001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": "100345612@qq.com"
+  },
+  "source": {
+    "git": "https://github.com/acct<blob>=0xE380816768705F49584E6C5257794B547559784C704E686D4C495A47544730597A6B474E5233756D35665A  430001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/DataEyeSDK.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "10.0"
+  },
+  "source_files": "DataEyeSDK/Classes/**/*"
+}
