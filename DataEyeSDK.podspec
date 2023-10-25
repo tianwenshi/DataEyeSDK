@@ -21,11 +21,11 @@ Pod::Spec.new do |s|
 TODO: Add long description of the pod here.
                        DESC
 
-  s.homepage         = 'https://github.com/acct<blob>=0xE380816768705F49584E6C5257794B547559784C704E686D4C495A47544730597A6B474E5233756D35665A  430001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/DataEyeSDK'
+  s.homepage         = 'https://github.com/tianwenshi/DataEyeSDK'
   # s.screenshots     = 'www.example.com/screenshots_1', 'www.example.com/screenshots_2'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
-  s.author           = { 'acct<blob>=0xE380816768705F49584E6C5257794B547559784C704E686D4C495A47544730597A6B474E5233756D35665A  430001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' => '100345612@qq.com' }
-  s.source           = { :git => 'https://github.com/acct<blob>=0xE380816768705F49584E6C5257794B547559784C704E686D4C495A47544730597A6B474E5233756D35665A  430001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/DataEyeSDK.git', :tag => s.version.to_s }
+  s.author           = { 'DataEyeSDK' => '100345612@qq.com' }
+  s.source           = { :git => 'https://gitlab.yeahmobi.com/yeahmobile/ios-sdk.git', :tag => s.version.to_s }
   # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
 
   s.ios.deployment_target = '11.0'
