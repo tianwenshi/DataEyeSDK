@@ -9,7 +9,7 @@
 Pod::Spec.new do |s|
   s.name             = 'DataEyeSDK'
   s.version          = '2.7.1'
-  s.summary          = 'A short description of DataEyeSDK.'
+  s.summary          = 'DataEye BI iOS SDK.'
 
 # This description is used to generate tags and improve search results.
 #   * Think: What does it do? Why did you write it? What is the focus?
