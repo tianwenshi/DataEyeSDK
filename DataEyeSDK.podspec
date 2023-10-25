@@ -30,7 +30,7 @@ TODO: Add long description of the pod here.
 
   s.ios.deployment_target = '11.0'
 
-  s.source_files = 'DataEyeSDK/Classes/**/*'
+  s.source_files = 'DataEyeSDK/Source/**/*'
   
   # s.resource_bundles = {
   #   'DataEyeSDK' => ['DataEyeSDK/Assets/*.png']
