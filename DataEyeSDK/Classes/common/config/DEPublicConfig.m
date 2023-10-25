@@ -57,6 +57,6 @@ static DEPublicConfig* config;
 }
 + (NSString*)version
 {
-    return @"2.7.1";
+    return @"2.7.2";
 }
 @end
