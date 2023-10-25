@@ -1,0 +1,6 @@
+use_frameworks!
+target 'DataEyeSDK_Tests' do
+  pod 'DataEyeSDK', :path => '../'
+  
+  
+end
