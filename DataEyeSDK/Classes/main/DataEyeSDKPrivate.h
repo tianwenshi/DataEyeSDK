@@ -39,6 +39,11 @@ static kEDEventTypeName const DE_EVENT_TYPE_USER_APPEND     = @"user_append";
 static NSString * const DE_EVENT_START                      = @"eventStart";
 static NSString * const DE_EVENT_DURATION                   = @"eventDuration";
 
+static NSString * const DE_NTP_SERVER_1                   = @"pool.ntp.org";
+static NSString * const DE_NTP_SERVER_2                   = @"time.google.com";
+static NSString * const DE_NTP_SERVER_3                   = @"time.cloudflare.com";
+static NSString * const DE_NTP_SERVER_CN                   = @"ntp.ntsc.ac.cn";
+
 static char DE_AUTOTRACK_VIEW_ID;
 static char DE_AUTOTRACK_VIEW_ID_APPID;
 static char DE_AUTOTRACK_VIEW_IGNORE;
@@ -67,7 +72,7 @@ static NSString * const DE_JS_TRACK_SCHEME = @"thinkinganalytics://trackEvent";
 @interface DataEyeSDK ()
 
 @property (atomic, copy) NSString *appid;
-@property (atomic, copy) NSString *serverURL;
+@property (atomic, copy) NSString *reportURL;
 @property (atomic, copy, nullable) NSString *accountId;
 @property (atomic, copy) NSString *identifyId;
 @property (atomic, strong) NSDictionary *superProperty;

@@ -33,11 +33,11 @@
     if (self) {
         self.libName = @"iOS";
         self.libVersion = DEPublicConfig.version;
-
+        
         NSDictionary *deviceInfo = [self getDeviceUniqueId];
         _uniqueId = [deviceInfo objectForKey:@"uniqueId"];
         _deviceId = [deviceInfo objectForKey:@"deviceId"];
-        _automaticData = [self collectAutomaticProperties];
+        [self updateAutomaticData];
         _appVersion = [[NSBundle mainBundle] infoDictionary][@"CFBundleShortVersionString"];
     }
     return self;
@@ -48,13 +48,32 @@
 }
 
 - (void)updateAutomaticData {
-    _automaticData = [self collectAutomaticProperties];
+    _staticAutomaticData = [self collectStaticAutomaticProperties];
+    _dynamicAutomaticData = [self collectDynamicAutomaticProperties];
 }
 
-- (NSDictionary *)collectAutomaticProperties {
+- (NSDictionary *)collectStaticAutomaticProperties {
     NSMutableDictionary *p = [NSMutableDictionary dictionary];
-    UIDevice *device = [UIDevice currentDevice];
-    [p setValue:_deviceId forKey:@"#device_id"];
+    
+    CGSize size = [UIScreen mainScreen].bounds.size;
+    
+    [p addEntriesFromDictionary:@{
+        @"#lib": self.libName,
+        @"#os": @"iOS",
+        @"#device_id": _deviceId,
+        @"#screen_height": @((NSInteger)size.height),
+        @"#screen_width": @((NSInteger)size.width),
+        @"#manufacturer": @"Apple",
+        @"#device_model": [self iphoneType],
+        @"#bundle_id": [DEDeviceInfo bundleId],
+    }];
+    
+    return p;
+    
+}
+
+- (NSDictionary *)collectDynamicAutomaticProperties {
+    NSMutableDictionary *p = [NSMutableDictionary dictionary];
     _telephonyInfo = [[CTTelephonyNetworkInfo alloc] init];
     CTCarrier *carrier = nil;
 
@@ -69,17 +88,10 @@
     }
 
     [p setValue:carrier.carrierName forKey:@"#carrier"];
-    CGSize size = [UIScreen mainScreen].bounds.size;
-    [p addEntriesFromDictionary:@{
-        @"#lib": self.libName,
-        @"#lib_version": self.libVersion,
-        @"#manufacturer": @"Apple",
-        @"#device_model": [self iphoneType],
-        @"#os": @"iOS",
-        @"#os_version": [device systemVersion],
-        @"#screen_height": @((NSInteger)size.height),
-        @"#screen_width": @((NSInteger)size.width),
-    }];
+    [p setValue:self.libVersion forKey:@"#lib_version"];
+    
+    UIDevice *device = [UIDevice currentDevice];
+    [p setValue:[device systemVersion] forKey:@"#os_version"];
     
     NSString *preferredLanguages = [[NSLocale preferredLanguages] firstObject];
     if (preferredLanguages && preferredLanguages.length > 0) {
@@ -155,10 +167,10 @@
     DEKeychainItemWrapper *wrapper = [[DEKeychainItemWrapper alloc] init];
     NSString *deviceIdKeychain = [wrapper readDeviceId];
     NSString *installTimesKeychain = [wrapper readInstallTimes];
-    BOOL isExistFirstRecord = [[[NSUserDefaults standardUserDefaults] objectForKey:@"thinking_isfirst"] boolValue];
+    BOOL isExistFirstRecord = [[[NSUserDefaults standardUserDefaults] objectForKey:@"dataeye_isfirst"] boolValue];
     if (!isExistFirstRecord) {
         _isFirstOpen = YES;
-        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"thinking_isfirst"];
+        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"dataeye_isfirst"];
         [[NSUserDefaults standardUserDefaults] synchronize];
     } else {
         _isFirstOpen = NO;

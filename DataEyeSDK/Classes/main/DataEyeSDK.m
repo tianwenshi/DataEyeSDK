@@ -6,12 +6,13 @@
 #import "DEPublicConfig.h"
 #import "DEFile.h"
 #import "DENetwork.h"
+#import "DEMarco.h"
 
 #if !__has_feature(objc_arc)
 #error The DataEyeSDK library must be compiled with ARC enabled
 #endif
 
-@interface DEPresetProperties (ThinkingAnalytics)
+@interface DEPresetProperties (DataEye)
 
 - (instancetype)initWithDictionary:(NSDictionary *)dict;
 - (void)updateValuesWithDictionary:(NSDictionary *)dict;
@@ -22,6 +23,8 @@
 @property (atomic, strong)   DENetwork *network;
 @property (atomic, strong)   DEAutoTrackManager *autoTrackManager;
 @property (strong,nonatomic) DEFile *file;
+
+@property (nonatomic, assign) NSInteger appStatus;
 @end
 
 @implementation DataEyeSDK
@@ -36,7 +39,7 @@ static dispatch_queue_t networkQueue;
 
 + (nullable DataEyeSDK *)sharedInstance {
     if (instances.count == 0) {
-        DELogError(@"sharedInstance called before creating a Thinking instance");
+        DELogError(@"sharedInstance called before creating a DataEye instance");
         return nil;
     }
     
@@ -47,7 +50,7 @@ static dispatch_queue_t networkQueue;
     if (instances[appid]) {
         return instances[appid];
     } else {
-        DELogError(@"sharedInstanceWithAppid called before creating a Thinking instance");
+        DELogError(@"sharedInstanceWithAppid called before creating a DataEye instance");
         return nil;
     }
 }
@@ -83,8 +86,8 @@ static dispatch_queue_t networkQueue;
 }
 
 + (void)initialize {
-    static dispatch_once_t ThinkingOnceToken;
-    dispatch_once(&ThinkingOnceToken, ^{
+    static dispatch_once_t DayaEyeOnceToken;
+    dispatch_once(&DayaEyeOnceToken, ^{
         NSString *queuelabel = [NSString stringWithFormat:@"cn.thinkingdata.%p", (void *)self];
         serialQueue = dispatch_queue_create([queuelabel UTF8String], DISPATCH_QUEUE_SERIAL);
         NSString *networkLabel = [queuelabel stringByAppendingString:@".network"];
@@ -100,14 +103,14 @@ static dispatch_queue_t networkQueue;
     return networkQueue;
 }
 
-- (instancetype)initLight:(NSString *)appid withServerURL:(NSString *)serverURL withConfig:(DEConfig *)config {
+- (instancetype)initLight:(NSString *)appid withServerURL:(NSString *)reportURL withConfig:(DEConfig *)config {
     if (self = [self init]) {
-        serverURL = [self checkServerURL:serverURL];
+        NSString * baseUrl = [self checkServerURL:reportURL];
         _appid = appid;
         _isEnabled = YES;
-        _serverURL = serverURL;
+        _reportURL = reportURL;
         _config = [config copy];
-        _config.configureURL = serverURL;
+        _config.configureURL = reportURL;
         
         self.trackTimer = [NSMutableDictionary dictionary];
         _timeFormatter = [[NSDateFormatter alloc] init];
@@ -130,17 +133,17 @@ static dispatch_queue_t networkQueue;
         _network.appid = appid;
         _network.sessionDidReceiveAuthenticationChallenge = config.securityPolicy.sessionDidReceiveAuthenticationChallenge;
         if (config.debugMode == DataEyeDebugOnly || config.debugMode == DataEyeDebug) {
-            _network.serverDebugURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/data_debug", serverURL]];
+            _network.serverDebugURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/data_debug", baseUrl]];
         }
         _network.securityPolicy = config.securityPolicy;
     }
     return self;
 }
 
-- (instancetype)initWithAppkey:(NSString *)appid withServerURL:(NSString *)serverURL withConfig:(DEConfig *)config {
+- (instancetype)initWithAppkey:(NSString *)appid withServerURL:(NSString *)reportURL withConfig:(DEConfig *)config {
     if (self = [self init:appid]) {
-        //serverURL = [self checkServerURL:serverURL];
-        self.serverURL = serverURL;
+//        NSString * baseUrl = [self checkServerURL:reportURL];
+//        self.reportURL = reportURL;
         self.appid = appid;
         
         [self login:[self getDeviceId]];
@@ -151,12 +154,24 @@ static dispatch_queue_t networkQueue;
         
         _config = [config copy];
         _config.appid = appid;
-        _config.configureURL = serverURL;
+        [self updateReportUrl:reportURL newReportUrl:[self.file unarchiveUpUrl]];
         
         self.file = [[DEFile alloc] initWithAppid:appid];
         [self retrievePersistedData];
+        self.appStatus = [self.file unarchiveAppStatus];
+        DELogInfo(@"initWithAppkey, appStatus = %lu", self.appStatus);
         //次序不能调整
-        [_config updateConfig];
+        [_config updateConfig:^(NSDictionary * _Nullable result, NSError * _Nullable error) {
+            if(error == nil && result != nil){
+                NSNumber * appStatusNum = [result valueForKey:@"status"];
+                if(appStatusNum){
+                    self.appStatus = [appStatusNum integerValue];
+                }
+                
+                NSString * newUrl = [result valueForKey:@"up-url"];
+                [self updateReportUrl:reportURL newReportUrl:newUrl];
+            }
+        }];
         
         self.trackTimer = [NSMutableDictionary dictionary];
         _timeFormatter = [[NSDateFormatter alloc] init];
@@ -190,12 +205,17 @@ static dispatch_queue_t networkQueue;
         _network.appid = appid;
         _network.sessionDidReceiveAuthenticationChallenge = config.securityPolicy.sessionDidReceiveAuthenticationChallenge;
         if (config.debugMode == DataEyeDebugOnly || config.debugMode == DataEyeDebug) {
-            _network.serverDebugURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/data_debug",serverURL]];
+            NSString * baseUrl = [self checkServerURL:self.reportURL];
+            _network.serverDebugURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/data_debug",baseUrl]];
         }
-        _network.serverURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@",serverURL]];
+        _network.serverURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@",self.reportURL]];
         _network.securityPolicy = config.securityPolicy;
         
         [self sceneSupportSetting];
+        
+        if(calibratedTime == nil){
+            [DataEyeSDK calibrateTimeWithNtps:@[DE_NTP_SERVER_1, DE_NTP_SERVER_1, DE_NTP_SERVER_3, DE_NTP_SERVER_CN]];
+        }
         
 #ifdef __IPHONE_13_0
         if (@available(iOS 13.0, *)) {
@@ -216,9 +236,34 @@ static dispatch_queue_t networkQueue;
         
         instances[appid] = self;
         
-        DELogInfo(@"Thinking Analytics SDK %@ instance initialized successfully with mode: %@, APP ID: %@, server url: %@, device ID: %@", [DEDeviceInfo libVersion], [self modeEnumToString:config.debugMode], appid, serverURL, [self getDeviceId]);
+        DELogInfo(@"DataEye Analytics SDK %@ instance initialized successfully with mode: %@, APP ID: %@, server url: %@, device ID: %@", [DEDeviceInfo libVersion], [self modeEnumToString:config.debugMode], appid, reportURL, [self getDeviceId]);
     }
     return self;
+}
+
+-(void)updateReportUrl:(NSString *)defaultReportUrl newReportUrl:(NSString *)newUrl {
+    
+    NSString * reportUrl = defaultReportUrl;
+    if(DE_NSSTRING_NOT_NULL(newUrl)){
+        reportUrl = newUrl;
+    }
+    
+    NSString * baseUrl = [self checkServerURL:reportUrl];
+    self.reportURL = reportUrl;
+    
+    if(self.config){
+        self.config.baseUrl = baseUrl;
+        self.config.configureURL = reportUrl;
+    }
+    
+    if(self.network){
+        if (self.config.debugMode == DataEyeDebugOnly || self.config.debugMode == DataEyeDebug) {
+            _network.serverDebugURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/data_debug",baseUrl]];
+        }
+        _network.serverURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@",reportUrl]];
+    }
+    
+    DELogInfo(@"updateReportUrl, final reportURL = %@", self.reportURL);
 }
 
 - (void)launchedIntoBackground:(NSDictionary *)launchOptions {
@@ -233,7 +278,7 @@ static dispatch_queue_t networkQueue;
 }
 
 - (NSString *)description {
-    return [NSString stringWithFormat:@"<DataEyeSDK: %p - appid: %@ serverUrl: %@>", (void *)self, self.appid, self.serverURL];
+    return [NSString stringWithFormat:@"<DataEyeSDK: %p - appid: %@ serverUrl: %@>", (void *)self, self.appid, self.reportURL];
 }
 
 + (UIApplication *)sharedUIApplication {
@@ -253,6 +298,11 @@ static dispatch_queue_t networkQueue;
 }
 
 - (BOOL)hasDisabled {
+    
+    if(self.appStatus < 0){
+        return YES;
+    }
+    
     return !_isEnabled || _isOptOut;
 }
 
@@ -308,7 +358,7 @@ static dispatch_queue_t networkQueue;
 
 #pragma mark - LightInstance
 - (DataEyeSDK *)createLightInstance {
-    DataEyeSDK *lightInstance = [[LightDataEyeSDK alloc] initWithAPPID:self.appid withServerURL:self.serverURL withConfig:self.config];
+    DataEyeSDK *lightInstance = [[LightDataEyeSDK alloc] initWithAPPID:self.appid withServerURL:self.reportURL withConfig:self.config];
     lightInstance.identifyId = [DEDeviceInfo sharedManager].uniqueId;
     lightInstance.relaunchInBackGround = self.relaunchInBackGround;
     lightInstance.isEnableSceneSupport = self.isEnableSceneSupport;
@@ -392,7 +442,7 @@ static dispatch_queue_t networkQueue;
             isWwan = (flags & kSCNetworkReachabilityFlagsIsWWAN);
         }
         SCNetworkReachabilityContext context = {0, (__bridge void *)self, NULL, NULL, NULL};
-        if (SCNetworkReachabilitySetCallback(_reachability, ThinkingReachabilityCallback, &context)) {
+        if (SCNetworkReachabilitySetCallback(_reachability, DataEyeReachabilityCallback, &context)) {
             if (!SCNetworkReachabilitySetDispatchQueue(_reachability, serialQueue)) {
                 SCNetworkReachabilitySetCallback(_reachability, NULL, NULL);
             }
@@ -560,10 +610,10 @@ static dispatch_queue_t networkQueue;
     return DataEyeNetworkTypeNONE;
 }
 
-static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info) {
-    DataEyeSDK *thinking = (__bridge DataEyeSDK *)info;
-    if (thinking && [thinking isKindOfClass:[DataEyeSDK class]]) {
-        [thinking reachabilityChanged:flags];
+static void DataEyeReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info) {
+    DataEyeSDK *dataeye = (__bridge DataEyeSDK *)info;
+    if (dataeye && [dataeye isKindOfClass:[DataEyeSDK class]]) {
+        [dataeye reachabilityChanged:flags];
     }
 }
 
@@ -638,14 +688,18 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 #pragma mark - Public
 
 - (void)track:(NSString *)event {
-    if ([self hasDisabled])
+    if ([self hasDisabled]){
+        DELogInfo(@"track, sdk is disabled, return");
         return;
+    }
     [self track:event properties:nil];
 }
 
 - (void)track:(NSString *)event properties:(NSDictionary *)propertiesDict {
-    if ([self hasDisabled])
+    if ([self hasDisabled]){
+        DELogInfo(@"track, sdk is disabled, return");
         return;
+    }
     propertiesDict = [self processParameters:propertiesDict withType:DE_EVENT_TYPE_TRACK withEventName:event withAutoTrack:NO withH5:NO];
     DEEventModel *eventData = [[DEEventModel alloc] initWithEventName:event];
     eventData.properties = [propertiesDict copy];
@@ -655,8 +709,10 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 
 // deprecated  使用 track:properties:time:timeZone: 方法传入
 - (void)track:(NSString *)event properties:(NSDictionary *)propertiesDict time:(NSDate *)time {
-    if ([self hasDisabled])
+    if ([self hasDisabled]){
+        DELogInfo(@"track, sdk is disabled, return");
         return;
+    }
     propertiesDict = [self processParameters:propertiesDict withType:DE_EVENT_TYPE_TRACK withEventName:event withAutoTrack:NO withH5:NO];
     DEEventModel *eventData = [[DEEventModel alloc] initWithEventName:event];
     eventData.properties = [propertiesDict copy];
@@ -666,8 +722,10 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 }
 
 - (void)track:(NSString *)event properties:(nullable NSDictionary *)properties time:(NSDate *)time timeZone:(NSTimeZone *)timeZone {
-    if ([self hasDisabled])
+    if ([self hasDisabled]){
+        DELogInfo(@"track, sdk is disabled, return");
         return;
+    }
     if (timeZone == nil) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -752,8 +810,10 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 }
 
 - (void)autotrack:(NSString *)event properties:(NSDictionary *)propertieDict withTime:(NSDate *)time {
-    if ([self hasDisabled])
+    if ([self hasDisabled]){
+        DELogInfo(@"autotrack, sdk is disabled, return");
         return;
+    }
     NSMutableDictionary *properties = [NSMutableDictionary dictionary];
     [properties addEntriesFromDictionary:propertieDict];
     NSDictionary *superProperty = [NSDictionary dictionary];
@@ -777,8 +837,10 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 }
 
 - (void)track:(NSString *)event withProperties:(NSDictionary *)properties withType:(NSString *)type withTime:(NSDate *)time {
-    if ([self hasDisabled])
+    if ([self hasDisabled]){
+        DELogInfo(@"track, sdk is disabled, return");
         return;
+    }
     
     properties = [self processParameters:properties withType:type withEventName:event withAutoTrack:NO withH5:NO];
     DEEventModel *eventData = [[DEEventModel alloc] initWithEventName:event eventType:type];
@@ -956,7 +1018,11 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
     NSString *bundleId = [DEDeviceInfo bundleId];
     NSString *networkType = [self.class getNetWorkStates];
     double offset = [self getTimezoneOffset:[NSDate date] timeZone:_config.defaultTimeZone];
-    NSDictionary *autoDic = [[DEDeviceInfo sharedManager] collectAutomaticProperties];
+    
+    NSMutableDictionary * autoDic = [NSMutableDictionary dictionary];
+    [autoDic addEntriesFromDictionary:[DEDeviceInfo sharedManager].staticAutomaticData];
+    [autoDic addEntriesFromDictionary:[DEDeviceInfo sharedManager].dynamicAutomaticData];
+    
     NSMutableDictionary *presetDic = [NSMutableDictionary new];
     [presetDic setObject:bundleId?:@"" forKey:@"#bundle_id"];
     [presetDic setObject:autoDic[@"#carrier"]?:@"" forKey:@"#carrier"];
@@ -1173,15 +1239,18 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 
 - (void)tdInternalTrack:(DEEventModel *)eventData
 {
-    if ([self hasDisabled])
+    if ([self hasDisabled]){
+        DELogInfo(@"tdInternalTrack, sdk is disabled, return");
         return;
+    }
     
     if (_relaunchInBackGround && !_config.trackRelaunchedInBackgroundEvents) {
         return;
     }
     
-    NSDictionary *propertiesDict = eventData.properties;
-    NSMutableDictionary<NSString *, id> *properties = [NSMutableDictionary dictionary];
+    NSMutableDictionary *dataDic = [NSMutableDictionary dictionary];
+    
+    [self addPresetProperties:dataDic eventData:eventData];
     
     NSString *timeString;
     NSDate *nowDate = [NSDate date];
@@ -1194,82 +1263,41 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
         timeString = eventData.timeString;
         offset = eventData.zoneOffset;
     }
-        
-    //增加duration
-    NSDictionary *eventTimer;
-    @synchronized (self.trackTimer) {
-        eventTimer = self.trackTimer[eventData.eventName];
-        if (eventTimer) {
-            [self.trackTimer removeObjectForKey:eventData.eventName];
-        }
+    if (eventData.timeValueType != DETimeValueTypeTimeOnly) {
+        dataDic[@"#zone_offset"] = @(offset);
     }
-
-    if (eventTimer) {
-        NSNumber *eventBegin = [eventTimer valueForKey:DE_EVENT_START];
-        NSNumber *eventDuration = [eventTimer valueForKey:DE_EVENT_DURATION];
-        
-        double usedTime;
-        NSNumber *currentTimeStamp = @([[NSDate date] timeIntervalSince1970]);
-        if (eventDuration) {
-            usedTime = [currentTimeStamp doubleValue] - [eventBegin doubleValue] + [eventDuration doubleValue];
-        } else {
-            usedTime = [currentTimeStamp doubleValue] - [eventBegin doubleValue];
-        }
-        
-        if (usedTime > 0) {
-            properties[@"#duration"] = @([[NSString stringWithFormat:@"%.3f", usedTime] floatValue]);
-        }
-    }
-        
-    if ([DataEyeSDK isTrackEvent:eventData.eventType]) {
-        properties[@"#app_version"] = [DEDeviceInfo sharedManager].appVersion;
-        properties[@"#bundle_id"] = [DEDeviceInfo bundleId];
-        properties[@"#network_type"] = [[self class] getNetWorkStates];
-        
-        if (_relaunchInBackGround) {
-            properties[@"#relaunched_in_background"] = @YES;
-        }
-        if (eventData.timeValueType != DETimeValueTypeTimeOnly) {
-            properties[@"#zone_offset"] = @(offset);
-        }
-        
-        [properties addEntriesFromDictionary:[DEDeviceInfo sharedManager].automaticData];
-    }
-
-    [properties addEntriesFromDictionary:propertiesDict];
-    
-    NSMutableDictionary *dataDic = [NSMutableDictionary dictionary];
     dataDic[@"#time"] = timeString;
-    dataDic[@"#uuid"] = [[NSUUID UUID] UUIDString];
-    if ([eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK_FIRST]) {
-        /** 首次事件的eventType也是track, 但是会有#first_check_id,
-         所以初始化的时候首次事件的eventType是 track_first, 用来判断是否需要extraID */
-        dataDic[@"#type"] = DE_EVENT_TYPE_TRACK;
-    } else {
-        dataDic[@"#type"] = eventData.eventType;
-    }
     
-    if (self.identifyId.length > 0) {
-        dataDic[@"#distinct_id"] = self.identifyId;
-    }
-    if (properties) {
-        dataDic[@"properties"] = [NSDictionary dictionaryWithDictionary:properties];
-    }
-    if (eventData.eventName.length > 0) {
-        dataDic[@"#event_name"] = eventData.eventName;
-    }
+    NSTimeInterval timeStamp = [nowDate timeIntervalSince1970];
+    NSInteger timeStampInteger = (NSInteger)timeStamp * 1000; // 将时间戳转换为整数
+    dataDic[@"#timestamp"] = [NSNumber numberWithInteger:timeStampInteger];
     
-    if (eventData.extraID.length > 0) {
-        if ([eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK_FIRST]) {
-            dataDic[@"#first_check_id"] = eventData.extraID;
-        } else if ([eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK_UPDATE]
-                   || [eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK_OVERWRITE]) {
-            dataDic[@"#event_id"] = eventData.extraID;
+    // 用户自定义属性
+    NSMutableDictionary *propertiesDict = [NSMutableDictionary dictionaryWithDictionary:eventData.properties];
+    
+    if (propertiesDict) {
+        
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_RESUME_FROM_BACKGROUND];
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_CRASH_REASON];
+        
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_EVENT_PROPERTY_TITLE];
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_EVENT_PROPERTY_URL_PROPERTY];
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_EVENT_PROPERTY_REFERRER_URL];
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_EVENT_PROPERTY_SCREEN_NAME];
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_EVENT_PROPERTY_ELEMENT_ID];
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_EVENT_PROPERTY_ELEMENT_TYPE];
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_EVENT_PROPERTY_ELEMENT_CONTENT];
+        [self movePresetProperties:dataDic customProperties:propertiesDict propertyName:DE_EVENT_PROPERTY_ELEMENT_POSITION];
+        
+        // 移除#号，并且将key全部小写
+        NSMutableDictionary * newPropertiesDict = [NSMutableDictionary dictionary];
+        for(NSString * proKey in propertiesDict){
+            id value = propertiesDict[proKey];
+            NSString * newKey = [proKey stringByReplacingOccurrencesOfString:@"#" withString:@""];
+            [newPropertiesDict setValue:value forKey:[newKey lowercaseString]];
         }
-    }
-    
-    if (self.accountId.length > 0) {
-        dataDic[@"#account_id"] = self.accountId;
+        
+        dataDic[@"properties"] = [NSDictionary dictionaryWithDictionary:newPropertiesDict];
     }
     
     if ([self.config.disableEvents containsObject:eventData.eventName]) {
@@ -1310,6 +1338,116 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
     }
 }
 
+-(void) addPresetProperties:(NSMutableDictionary *)dataDic eventData:(DEEventModel *)eventData {
+    @try {
+        // event_name
+        if (eventData.eventName.length > 0) {
+            dataDic[@"#event_name"] = eventData.eventName;
+        }
+        
+        // type
+        if ([eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK_FIRST]) {
+            /** 首次事件的eventType也是track, 但是会有#first_check_id,
+             所以初始化的时候首次事件的eventType是 track_first, 用来判断是否需要extraID */
+            dataDic[@"#type"] = DE_EVENT_TYPE_TRACK;
+        } else {
+            dataDic[@"#type"] = eventData.eventType;
+        }
+        
+        // uuid
+        dataDic[@"#uuid"] = [[NSUUID UUID] UUIDString];
+        
+        // distinct_id
+        if (self.identifyId.length > 0) {
+            dataDic[@"#distinct_id"] = self.identifyId;
+        }
+        
+        // account_id
+        if (self.accountId.length > 0) {
+            dataDic[@"#account_id"] = self.accountId;
+        }
+            
+        //增加duration
+        NSDictionary *eventTimer;
+        [self addDuration:dataDic eventName:eventData.eventName];
+            
+        dataDic[@"#app_version"] = [DEDeviceInfo sharedManager].appVersion;
+        dataDic[@"#network_type"] = [[self class] getNetWorkStates];
+        
+        if (_relaunchInBackGround) {
+            dataDic[@"#relaunched_in_background"] = @YES;
+        }
+        
+        [dataDic addEntriesFromDictionary:[DEDeviceInfo sharedManager].dynamicAutomaticData];
+        
+        if (eventData.extraID.length > 0) {
+            if ([eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK_FIRST]) {
+                dataDic[@"#first_check_id"] = eventData.extraID;
+            } else if ([eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK_UPDATE]
+                       || [eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK_OVERWRITE]) {
+                dataDic[@"#event_id"] = eventData.extraID;
+            }
+        }
+    } @catch (NSException *exception) {
+        
+    } @finally {
+        
+    }
+}
+
+-(void) movePresetProperties:(NSMutableDictionary *)dataDic customProperties:(NSMutableDictionary *)customProperties propertyName:(NSString *) propertyName{
+    
+    @try {
+        if (dataDic == nil){
+            return;
+        }
+        
+        if (customProperties == nil){
+            return;
+        }
+        
+        id value = [customProperties objectForKey:propertyName];
+        if (value == nil){
+            return;
+        }
+        
+        [customProperties removeObjectForKey:propertyName];
+        [dataDic setValue:value forKey:propertyName];
+    } @catch (NSException *exception) {
+        
+    } @finally {
+        
+    }
+}
+
+-(void) addDuration:(NSMutableDictionary *)dataDic eventName:(NSString *) eventName{
+    //增加duration
+    NSDictionary *eventTimer;
+    @synchronized (self.trackTimer) {
+        eventTimer = self.trackTimer[eventName];
+        if (eventTimer) {
+            [self.trackTimer removeObjectForKey:eventName];
+        }
+    }
+
+    if (eventTimer) {
+        NSNumber *eventBegin = [eventTimer valueForKey:DE_EVENT_START];
+        NSNumber *eventDuration = [eventTimer valueForKey:DE_EVENT_DURATION];
+        
+        double usedTime;
+        NSNumber *currentTimeStamp = @([[NSDate date] timeIntervalSince1970]);
+        if (eventDuration) {
+            usedTime = [currentTimeStamp doubleValue] - [eventBegin doubleValue] + [eventDuration doubleValue];
+        } else {
+            usedTime = [currentTimeStamp doubleValue] - [eventBegin doubleValue];
+        }
+        
+        if (usedTime > 0) {
+            dataDic[@"#duration"] = @([[NSString stringWithFormat:@"%.3f", usedTime] floatValue]);
+        }
+    }
+}
+
 - (NSDictionary *)calibratedTime:(NSDictionary *)dataDic withDate:(NSDate *)date withSystemDate:(NSTimeInterval)systemUptime withEventData:(DEEventModel *)eventData {
     NSMutableDictionary *calibratedData = [NSMutableDictionary dictionaryWithDictionary:dataDic];
     NSTimeInterval outTime = systemUptime - calibratedTime.systemUptime;
@@ -1319,16 +1457,17 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
         return dataDic;
     }
     NSString *timeString = [_timeFormatter stringFromDate:serverDate];
+    NSTimeInterval timeStamp = [serverDate timeIntervalSince1970];
+    NSInteger timeStampInteger = (NSInteger)timeStamp * 1000; // 将时间戳转换为整数
     double offset = [self getTimezoneOffset:serverDate timeZone:_config.defaultTimeZone];
     
     calibratedData[@"#time"] = timeString;
-    NSMutableDictionary *properties = [NSMutableDictionary dictionaryWithDictionary:[calibratedData objectForKey:@"properties"]];
+    calibratedData[@"#timestamp"] = [NSNumber numberWithInteger:timeStampInteger];
 
     if ([eventData.eventType isEqualToString:DE_EVENT_TYPE_TRACK]
         && eventData.timeValueType != DETimeValueTypeTimeOnly) {
-        properties[@"#zone_offset"] = @(offset);
+        calibratedData[@"#zone_offset"] = @(offset);
     }
-    calibratedData[@"properties"] = properties;
     return calibratedData;
 }
 
@@ -1520,8 +1659,10 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 
 #pragma mark - Autotracking
 - (void)enableAutoTrack:(DataEyeAutoTrackEventType)eventType {
-    if ([self hasDisabled])
+    if ([self hasDisabled]){
+        DELogInfo(@"enableAutoTrack, sdk is disabled, return");
         return;
+    }
     
     _config.autoTrackEventType = eventType;
     if ([DEDeviceInfo sharedManager].isFirstOpen && (_config.autoTrackEventType & DataEyeEventTypeAppInstall)) {
@@ -1676,7 +1817,7 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 
 #pragma mark - Crash tracking
 -(void)trackCrash {
-    [[DataEyeExceptionHandler sharedHandler] addThinkingInstance:self];
+    [[DataEyeExceptionHandler sharedHandler] addDataEyeInstance:self];
 }
 
 #pragma mark - Calibrate time
@@ -1693,6 +1834,23 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
     }
 }
 
++ (void)calibrateTimeWithNtps:(NSArray *)ntpServers {
+    NSMutableArray *serverHostArr = [NSMutableArray array];
+    for (NSString *host in ntpServers) {
+        if ([host isKindOfClass:[NSString class]] && host.length > 0) {
+            [serverHostArr addObject:host];
+        }
+    }
+    
+    
+    if(serverHostArr.count <= 0){
+        return;
+    }
+    
+    calibratedTime = [DECalibratedTimeWithNTP sharedInstance];
+    [[DECalibratedTimeWithNTP sharedInstance] recalibrationWithNtps:serverHostArr];
+}
+
 // for UNITY
 - (NSString *)getTimeString:(NSDate *)date {
     return [_timeFormatter stringFromDate:date];
@@ -1700,62 +1858,62 @@ static void ThinkingReachabilityCallback(SCNetworkReachabilityRef target, SCNetw
 
 @end
 
-@implementation UIView (ThinkingAnalytics)
+@implementation UIView (DataEye)
 
-- (NSString *)thinkingAnalyticsViewID {
+- (NSString *)dataEyeViewID {
     return objc_getAssociatedObject(self, &DE_AUTOTRACK_VIEW_ID);
 }
 
-- (void)setThinkingAnalyticsViewID:(NSString *)thinkingAnalyticsViewID {
-    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_ID, thinkingAnalyticsViewID, OBJC_ASSOCIATION_COPY_NONATOMIC);
+- (void)setDataEyeViewID:(NSString *)dataEyeViewID {
+    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_ID, dataEyeViewID, OBJC_ASSOCIATION_COPY_NONATOMIC);
 }
 
-- (BOOL)thinkingAnalyticsIgnoreView {
+- (BOOL)dataEyeIgnoreView {
     return [objc_getAssociatedObject(self, &DE_AUTOTRACK_VIEW_IGNORE) boolValue];
 }
 
-- (void)setThinkingAnalyticsIgnoreView:(BOOL)thinkingAnalyticsIgnoreView {
-    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_IGNORE, [NSNumber numberWithBool:thinkingAnalyticsIgnoreView], OBJC_ASSOCIATION_ASSIGN);
+- (void)setDataEyeIgnoreView:(BOOL)dataEyeIgnoreView {
+    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_IGNORE, [NSNumber numberWithBool:dataEyeIgnoreView], OBJC_ASSOCIATION_ASSIGN);
 }
 
-- (NSDictionary *)thinkingAnalyticsIgnoreViewWithAppid {
+- (NSDictionary *)dataEyeIgnoreViewWithAppid {
     return objc_getAssociatedObject(self, &DE_AUTOTRACK_VIEW_IGNORE_APPID);
 }
 
-- (void)setThinkingAnalyticsIgnoreViewWithAppid:(NSDictionary *)thinkingAnalyticsViewProperties {
-    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_IGNORE_APPID, thinkingAnalyticsViewProperties, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (void)setDataEyeIgnoreViewWithAppid:(NSDictionary *)dataEyeViewProperties {
+    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_IGNORE_APPID, dataEyeViewProperties, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (NSDictionary *)thinkingAnalyticsViewIDWithAppid {
+- (NSDictionary *)dataEyeViewIDWithAppid {
     return objc_getAssociatedObject(self, &DE_AUTOTRACK_VIEW_ID_APPID);
 }
 
-- (void)setThinkingAnalyticsViewIDWithAppid:(NSDictionary *)thinkingAnalyticsViewProperties {
-    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_ID_APPID, thinkingAnalyticsViewProperties, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (void)setDataEyeViewIDWithAppid:(NSDictionary *)dataEyeViewProperties {
+    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_ID_APPID, dataEyeViewProperties, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (NSDictionary *)thinkingAnalyticsViewProperties {
+- (NSDictionary *)dataEyeViewProperties {
     return objc_getAssociatedObject(self, &DE_AUTOTRACK_VIEW_PROPERTIES);
 }
 
-- (void)setThinkingAnalyticsViewProperties:(NSDictionary *)thinkingAnalyticsViewProperties {
-    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_PROPERTIES, thinkingAnalyticsViewProperties, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (void)setDataEyeViewProperties:(NSDictionary *)dataEyeViewProperties {
+    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_PROPERTIES, dataEyeViewProperties, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (NSDictionary *)thinkingAnalyticsViewPropertiesWithAppid {
+- (NSDictionary *)dataEyeViewPropertiesWithAppid {
     return objc_getAssociatedObject(self, &DE_AUTOTRACK_VIEW_PROPERTIES_APPID);
 }
 
-- (void)setThinkingAnalyticsViewPropertiesWithAppid:(NSDictionary *)thinkingAnalyticsViewProperties {
-    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_PROPERTIES_APPID, thinkingAnalyticsViewProperties, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (void)setDataEyeViewPropertiesWithAppid:(NSDictionary *)dataEyeViewProperties {
+    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_PROPERTIES_APPID, dataEyeViewProperties, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (id)thinkingAnalyticsDelegate {
+- (id)dataEyeDelegate {
     return objc_getAssociatedObject(self, &DE_AUTOTRACK_VIEW_DELEGATE);
 }
 
-- (void)setThinkingAnalyticsDelegate:(id)thinkingAnalyticsDelegate {
-    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_DELEGATE, thinkingAnalyticsDelegate, OBJC_ASSOCIATION_ASSIGN);
+- (void)setDataEyeDelegate:(id)dataEyeDelegate {
+    objc_setAssociatedObject(self, &DE_AUTOTRACK_VIEW_DELEGATE, dataEyeDelegate, OBJC_ASSOCIATION_ASSIGN);
 }
 
 @end

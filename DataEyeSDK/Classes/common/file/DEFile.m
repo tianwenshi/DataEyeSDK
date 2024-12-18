@@ -1,9 +1,9 @@
 //
 //  TDFile.m
-//  ThinkingSDK
+//  DataEyeSDK
 //
 //  Created by LiHuanan on 2020/9/8.
-//  Copyright © 2020 thinkingdata. All rights reserved.
+//  Copyright © 2020 dataeye. All rights reserved.
 //
 
 #import "DEFile.h"
@@ -136,7 +136,7 @@
             return NO;
         }
     } @catch (NSException *exception) {
-        DELogError(@"Got exception: %@, reason: %@. You can only send to Thinking values that inherit from NSObject and implement NSCoding.", exception.name, exception.reason);
+        DELogError(@"Got exception: %@, reason: %@. You can only send to DataEye values that inherit from NSObject and implement NSCoding.", exception.name, exception.reason);
         return NO;
     }
     
@@ -213,6 +213,14 @@
     return [self persistenceFilePath:@"installTimes"];
 }
 
+- (NSString *)appStatusFilePath {
+    return [self persistenceFilePath:@"appStatus"];
+}
+
+- (NSString *)upUrlFilePath {
+    return [self persistenceFilePath:@"upUrl"];
+}
+
 - (NSString *)persistenceFilePath:(NSString *)data{
     NSString *filename = [NSString stringWithFormat:@"thinking-%@-%@.plist", self.appid, data];
     return [[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) lastObject]
@@ -228,4 +236,27 @@
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"thinkingdata_accountId"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
+
+- (void)archiveAppStatus:(NSInteger)appStatus{
+    NSString *filePath = [self appStatusFilePath];
+    if (![self archiveObject:[NSNumber numberWithInteger:appStatus] withFilePath:filePath]) {
+        DELogError(@"%@ unable to archive appStatus", self);
+    }
+}
+- (NSInteger)unarchiveAppStatus{
+    NSNumber *appStatusNum = [self unarchiveFromFile:[self appStatusFilePath] asClass:[NSNumber class]];
+    return [appStatusNum integerValue];
+}
+
+// up Url
+- (void)archiveUpUrl:(NSString *)upUrl{
+    NSString *filePath = [self upUrlFilePath];
+    if (![self archiveObject:[upUrl copy] withFilePath:filePath]) {
+        DELogError(@"%@ unable to archive UpUrl", self);
+    }
+}
+- (NSString *)unarchiveUpUrl{
+    return [self unarchiveFromFile:[self upUrlFilePath] asClass:[NSString class]];
+}
+
 @end

@@ -4,6 +4,7 @@
 #import "DataEyeSDKPrivate.h"
 #import "DESecurityPolicy.h"
 #import "DEFile.h"
+#import "DEMarco.h"
 
 #define DESDKSETTINGS_PLIST_SETTING_IMPL(TYPE, PLIST_KEY, GETTER, SETTER, DEFAULT_VALUE, ENABLE_CACHE) \
 static TYPE *g_##PLIST_KEY = nil; \
@@ -66,18 +67,44 @@ DESDKSETTINGS_PLIST_SETTING_IMPL(NSNumber, DataEyeExpirationDays, _expirationDay
 }
 
 
-- (void)updateConfig {
-    NSString *serverUrlStr = [NSString stringWithFormat:@"%@/config",self.configureURL];
+
+- (void)updateConfig:(DESettingCallback)callback {
+    NSString *serverUrlStr = [NSString stringWithFormat:@"%@/v1/settings?app_id=%@",self.baseUrl, self.appid];
     DENetwork *network = [[DENetwork alloc] init];
     network.serverURL = [NSURL URLWithString:serverUrlStr];
     network.securityPolicy = _securityPolicy;
     
-    [network fetchRemoteConfig:self.appid handler:^(NSDictionary * _Nonnull result, NSError * _Nullable error) {
+    
+    [network fetchRemoteConfig:^(NSDictionary * _Nonnull result, NSError * _Nullable error) {
+        DELogInfo(@"fetchRemoteConfig, error = %@", [error description]);
         if (!error) {
+            NSMutableDictionary * resultConfig = [NSMutableDictionary dictionary];
+            DELogInfo(@"fetchRemoteConfig, result = %@", result);
+            DEFile *file = [[DEFile alloc] initWithAppid:self.appid];
+            NSDictionary * prdInfo = [result objectForKey:@"prd_info"];
+            if(prdInfo){
+            
+                BOOL appStatus = [[prdInfo objectForKey:@"status"] boolValue];
+                if(appStatus){
+                    [file archiveAppStatus:1];
+                    [resultConfig setValue:[NSNumber numberWithInteger:1] forKey:@"status"];
+                }else{
+                    [file archiveAppStatus:-1];
+                    [resultConfig setValue:[NSNumber numberWithInteger:-1] forKey:@"status"];
+                }
+                
+                NSString * upUrl = [prdInfo objectForKey:@"up-url"];
+                [resultConfig setValue:upUrl forKey:@"up-url"];
+                if(!DE_NSSTRING_NOT_NULL(upUrl)){
+                    [file archiveUpUrl:upUrl];
+                }
+                DELogInfo(@"fetchRemoteConfig, appStatus = %ld, upUrl = %@", appStatus, upUrl);
+            }
+            
             NSInteger uploadInterval = [[result objectForKey:@"sync_interval"] integerValue];
             NSInteger uploadSize = [[result objectForKey:@"sync_batch_size"] integerValue];
             if (uploadInterval != [self->_uploadInterval integerValue] || uploadSize != [self->_uploadSize integerValue]) {
-                DEFile *file = [[DEFile alloc] initWithAppid:self.appid];
+            
                 if (uploadInterval > 0) {
                     self.uploadInterval = [NSNumber numberWithInteger:uploadInterval];
                     [file archiveUploadInterval:self.uploadInterval];
@@ -89,6 +116,14 @@ DESDKSETTINGS_PLIST_SETTING_IMPL(NSNumber, DataEyeExpirationDays, _expirationDay
                 }
             }
             self.disableEvents = [result objectForKey:@"disable_event_list"];
+            
+            if(callback) {
+                callback(resultConfig, nil);
+            }
+        }else{
+            if(callback) {
+                callback(nil, error);
+            }
         }
     }];
 }

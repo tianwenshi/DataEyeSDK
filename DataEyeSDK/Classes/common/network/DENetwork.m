@@ -33,11 +33,12 @@ static NSString *kDEIntegrationExtra = @"DE-Integration-Extra";
     NSMutableDictionary *properties = [[recordDic objectForKey:@"properties"] mutableCopy];
     
     if ([DataEyeSDK isTrackEvent:[record objectForKey:@"#type"]]) {
-        [properties addEntriesFromDictionary:[DEDeviceInfo sharedManager].automaticData];
+        [properties addEntriesFromDictionary:[DEDeviceInfo sharedManager].staticAutomaticData];
+        [properties addEntriesFromDictionary:[DEDeviceInfo sharedManager].dynamicAutomaticData];
     }
     [recordDic setObject:properties forKey:@"properties"];
     NSString *jsonString = [DEJSONUtil JSONStringForObject:recordDic];
-    NSMutableURLRequest *request = [self buildDebugRequestWithJSONString:jsonString withAppid:appid withDeviceId:[[DEDeviceInfo sharedManager].automaticData objectForKey:@"#device_id"]];
+    NSMutableURLRequest *request = [self buildDebugRequestWithJSONString:jsonString withAppid:appid withDeviceId:[[DEDeviceInfo sharedManager].staticAutomaticData objectForKey:@"#device_id"]];
     dispatch_semaphore_t flushSem = dispatch_semaphore_create(0);
 
     void (^block)(NSData *, NSURLResponse *, NSError *) = ^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -107,6 +108,7 @@ static NSString *kDEIntegrationExtra = @"DE-Integration-Extra";
     
     NSDictionary *flushDic = @{
         @"data": recordArray,
+        @"automaticData": [DEDeviceInfo sharedManager].staticAutomaticData,
         @"#app_id": self.appid,
     };
 //    NSDictionary *flushDic = @{
@@ -179,7 +181,7 @@ static NSString *kDEIntegrationExtra = @"DE-Integration-Extra";
     return request;
 }
 
-- (void)fetchRemoteConfig:(NSString *)appid handler:(DEFlushConfigBlock)handler {
+- (void)fetchRemoteConfig:(DEFlushConfigBlock)handler {
     void (^block)(NSData *, NSURLResponse *, NSError *) = ^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || ![response isKindOfClass:[NSHTTPURLResponse class]]) {
             DELogError(@"Fetch remote config network failed:%@", error);
@@ -189,15 +191,19 @@ static NSString *kDEIntegrationExtra = @"DE-Integration-Extra";
         NSDictionary *ret = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&err];
         if (err) {
             DELogError(@"Fetch remote config json error:%@", err);
-        } else if ([ret isKindOfClass:[NSDictionary class]] && [ret[@"code"] isEqualToNumber:[NSNumber numberWithInt:0]]) {
-            DELogDebug(@"Fetch remote config for %@ : %@", appid, [ret objectForKey:@"data"]);
-            handler([ret objectForKey:@"data"], error);
+            if(handler){
+                handler([NSDictionary dictionary], err);
+            }
+        } else if ([ret isKindOfClass:[NSDictionary class]] && [ret[@"code"] isEqualToNumber:[NSNumber numberWithInt:10000]]) {
+            DELogDebug(@"Fetch remote config : %@", [ret objectForKey:@"data"]);
+            if(handler){
+                handler([ret objectForKey:@"data"], error);
+            }
         } else {
             DELogError(@"Fetch remote config failed");
         }
     };
-    NSString *urlStr = [NSString stringWithFormat:@"%@?appid=%@", self.serverURL, appid];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlStr]];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:self.serverURL];
     [request setHTTPMethod:@"Get"];
     NSURLSessionDataTask *task = [[self sharedURLSession] dataTaskWithRequest:request completionHandler:block];
     [task resume];

@@ -13,7 +13,7 @@ static const atomic_int_fast32_t UncaughtExceptionMaximum = 10;
 @interface DataEyeExceptionHandler ()
 
 @property (nonatomic) NSUncaughtExceptionHandler *defaultExceptionHandler;
-@property (nonatomic, strong) NSHashTable *thinkingAnalyticsSDKInstances;
+@property (nonatomic, strong) NSHashTable *dataEyeSDKInstances;
 @property (nonatomic, unsafe_unretained) struct sigaction *prev_signal_handlers;
 
 @end
@@ -32,7 +32,7 @@ static const atomic_int_fast32_t UncaughtExceptionMaximum = 10;
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _thinkingAnalyticsSDKInstances = [NSHashTable weakObjectsHashTable];
+        _dataEyeSDKInstances = [NSHashTable weakObjectsHashTable];
         _prev_signal_handlers = calloc(NSIG, sizeof(struct sigaction));
         
         [self setupHandlers];
@@ -125,7 +125,7 @@ static void DESignalHandler(int signalNumber, struct __siginfo *info, void *cont
         [properties setValue:crashStr forKey:DE_CRASH_REASON];
 
         NSDate *trackDate = [NSDate date];
-        for (DataEyeSDK *instance in self.thinkingAnalyticsSDKInstances) {
+        for (DataEyeSDK *instance in self.dataEyeSDKInstances) {
             [instance autotrack:DE_APP_CRASH_EVENT properties:properties withTime:trackDate];
             if (![instance isAutoTrackEventTypeIgnored:DataEyeEventTypeAppEnd]) {
                 [instance autotrack:DE_APP_END_EVENT properties:nil withTime:trackDate];
@@ -165,10 +165,10 @@ static void DESignalHandler(int signalNumber, struct __siginfo *info, void *cont
     return limitString;
 }
 
-- (void)addThinkingInstance:(DataEyeSDK *)instance {
+- (void)addDataEyeInstance:(DataEyeSDK *)instance {
     NSParameterAssert(instance != nil);
-    if (![self.thinkingAnalyticsSDKInstances containsObject:instance]) {
-        [self.thinkingAnalyticsSDKInstances addObject:instance];
+    if (![self.dataEyeSDKInstances containsObject:instance]) {
+        [self.dataEyeSDKInstances addObject:instance];
     }
 }
 

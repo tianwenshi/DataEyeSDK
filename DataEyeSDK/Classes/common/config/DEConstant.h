@@ -1,9 +1,9 @@
 //
 //  DEConstant.h
-//  ThinkingSDK
+//  DataEyeSDK
 //
 //  Created by LiHuanan on 2020/9/8.
-//  Copyright © 2020 thinkingdata. All rights reserved.
+//  Copyright © 2020 dataeye. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>

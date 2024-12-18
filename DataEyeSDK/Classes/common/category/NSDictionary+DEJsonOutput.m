@@ -1,9 +1,9 @@
 //
 //  NSDictionary+TDJsonOutput.m
-//  ThinkingSDK
+//  DataEyeSDK
 //
 //  Created by huangdiao on 2021/3/18.
-//  Copyright © 2021 thinkingdata. All rights reserved.
+//  Copyright © 2021 dataeye. All rights reserved.
 //
 
 #import "NSDictionary+DEJsonOutput.h"

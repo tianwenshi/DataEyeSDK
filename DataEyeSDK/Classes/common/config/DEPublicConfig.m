@@ -1,9 +1,9 @@
 //
 //  TDPublicConfig.m
-//  ThinkingSDK
+//  DataEyeSDK
 //
 //  Created by LiHuanan on 2020/9/8.
-//  Copyright © 2020 thinkingdata. All rights reserved.
+//  Copyright © 2020 dataeye. All rights reserved.
 //
 
 #import "DEPublicConfig.h"
@@ -57,6 +57,6 @@ static DEPublicConfig* config;
 }
 + (NSString*)version
 {
-    return @"2.7.2";
+    return @"2.8.0";
 }
 @end

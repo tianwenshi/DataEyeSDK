@@ -59,6 +59,7 @@
         } else {
             self.systemUptime = [[NSProcessInfo processInfo] systemUptime];
             self.serverTime = [[NSDate dateWithTimeIntervalSinceNow:offset] timeIntervalSince1970];
+            DELogDebug(@"ntp serverTime success, %@", host);
             break;
         }
     }

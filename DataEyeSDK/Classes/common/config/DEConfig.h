@@ -3,6 +3,7 @@
 #import "DESecurityPolicy.h"
 NS_ASSUME_NONNULL_BEGIN
 
+typedef void (^DESettingCallback)(NSDictionary * _Nullable result, NSError * _Nullable error);
 
 
 @interface DEConfig:NSObject <NSCopying>
@@ -44,6 +45,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (atomic, copy) NSString *configureURL;
 
 /**
+ 域名地址
+ */
+@property (atomic, copy) NSString *baseUrl;
+
+/**
  初始化配置后台自启事件 YES：采集后台自启事件 NO：不采集后台自启事件
  */
 @property (nonatomic, assign) BOOL trackRelaunchedInBackgroundEvents;
@@ -70,7 +76,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (DEConfig *)defaultTDConfig;
 - (instancetype)initWithAppId:(NSString *)appId serverUrl:(NSString *)serverUrl;
-- (void)updateConfig;
+- (void)updateConfig:(DESettingCallback) callback;
 - (void)setNetworkType:(DENetworkType)type;
 
 @end

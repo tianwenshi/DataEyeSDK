@@ -26,7 +26,7 @@
             [DEOSLog log:NO message:formattedMessage type:type];
         }
 #else
-        NSLog(@"[THINKING] %@", formattedMessage);
+        NSLog(@"[DataEye] %@", formattedMessage);
 #endif
     }
 }

@@ -11,7 +11,10 @@ FOUNDATION_EXTERN NSString *const VERSION;
 @property (nonatomic, copy) NSString *uniqueId;
 @property (nonatomic, copy) NSString *deviceId;
 @property (nonatomic, copy) NSString *appVersion;
-@property (nonatomic, strong) NSDictionary *automaticData;
+// 可能发生变化的
+@property (nonatomic, strong) NSDictionary *dynamicAutomaticData;
+// 永久不变的
+@property (nonatomic, strong) NSDictionary *staticAutomaticData;
 @property (nonatomic, readonly) BOOL isFirstOpen;
 
 @property (nonatomic, copy) NSString *libName;
@@ -19,7 +22,6 @@ FOUNDATION_EXTERN NSString *const VERSION;
 - (void)updateAutomaticData;
 
 + (NSString *)libVersion;
-- (NSDictionary *)collectAutomaticProperties;
 + (NSString*)bundleId;
 
 @end

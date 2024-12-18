@@ -7,7 +7,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface DataEyeExceptionHandler : NSObject
 
 + (instancetype)sharedHandler;
-- (void)addThinkingInstance:(DataEyeSDK *)instance;
+- (void)addDataEyeInstance:(DataEyeSDK *)instance;
 
 @end
 

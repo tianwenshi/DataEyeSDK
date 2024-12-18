@@ -1,9 +1,9 @@
 //
 //  TDPresetProperties.h
-//  ThinkingSDK
+//  DataEyeSDK
 //
 //  Created by huangdiao on 2021/5/25.
-//  Copyright © 2021 thinkingdata. All rights reserved.
+//  Copyright © 2021 dataeye. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>

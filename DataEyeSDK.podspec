@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'DataEyeSDK'
-  s.version          = '2.7.2'
+  s.version          = '2.8.0'
   s.summary          = 'DataEye BI iOS SDK.'
 
 # This description is used to generate tags and improve search results.

@@ -1,9 +1,9 @@
 //
 //  TDFile.h
-//  ThinkingSDK
+//  DataEyeSDK
 //
 //  Created by LiHuanan on 2020/9/8.
-//  Copyright © 2020 thinkingdata. All rights reserved.
+//  Copyright © 2020 dataeye. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
@@ -37,6 +37,15 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString*)unarchiveOldLoginId;
 // 兼容老版本
 - (void)deleteOldLoginId;
+
+// app status
+- (void)archiveAppStatus:(NSInteger)appStatus;
+- (NSInteger)unarchiveAppStatus;
+
+// up Url
+- (void)archiveUpUrl:(NSString *)upUrl;
+- (NSString *)unarchiveUpUrl;
+
 @end;
 
 NS_ASSUME_NONNULL_END

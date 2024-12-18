@@ -7,8 +7,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- SDK VERSION = 2.7.1
- ThinkingData API
+ SDK VERSION = 2.8.0
+ DataEye API
  
  ## 初始化API
  
@@ -30,7 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
  [[DataEyeSDK sharedInstance] track:@"some_event"];
  ```
  ## 详细文档
- http://doc.thinkingdata.cn/tgamanual/installation/ios_sdk_installation.html
+ https://www.yuque.com/maticoo/eetpxb/dc3ote2ry8oz45l7
 
  */
 @interface DataEyeSDK : NSObject
@@ -324,7 +324,7 @@ NS_ASSUME_NONNULL_BEGIN
 
  @param eventType 枚举 ThinkingAnalyticsAutoTrackEventType 的列表，表示需要开启的自动采集事件类型
  
- 详细文档 http://doc.thinkingdata.cn/tgamanual/installation/ios_sdk_installation/ios_sdk_autotrack.html
+ 详细文档 https://www.yuque.com/maticoo/eetpxb/vq4zbmvbveerum63
  */
 - (void)enableAutoTrack:(DataEyeAutoTrackEventType)eventType;
 
@@ -428,42 +428,42 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  APP 控件点击事件
  */
-@interface UIView (ThinkingAnalytics)
+@interface UIView (DataEye)
 
 /**
 设置控件元素 ID
  */
-@property (copy,nonatomic) NSString *thinkingAnalyticsViewID;
+@property (copy,nonatomic) NSString *dataEyeViewID;
 
 /**
  配置 APPID 的控件元素 ID
  */
-@property (strong,nonatomic) NSDictionary *thinkingAnalyticsViewIDWithAppid;
+@property (strong,nonatomic) NSDictionary *dataEyeViewIDWithAppid;
 
 /**
  忽略某个控件的点击事件
  */
-@property (nonatomic,assign) BOOL thinkingAnalyticsIgnoreView;
+@property (nonatomic,assign) BOOL dataEyeIgnoreView;
 
 /**
  配置 APPID 的忽略某个控件的点击事件
  */
-@property (strong,nonatomic) NSDictionary *thinkingAnalyticsIgnoreViewWithAppid;
+@property (strong,nonatomic) NSDictionary *dataEyeIgnoreViewWithAppid;
 
 /**
  自定义控件点击事件的属性
  */
-@property (strong,nonatomic) NSDictionary *thinkingAnalyticsViewProperties;
+@property (strong,nonatomic) NSDictionary *dataEyeViewProperties;
 
 /**
  配置 APPID 的自定义控件点击事件的属性
  */
-@property (strong,nonatomic) NSDictionary *thinkingAnalyticsViewPropertiesWithAppid;
+@property (strong,nonatomic) NSDictionary *dataEyeViewPropertiesWithAppid;
 
 /**
- thinkingAnalyticsDelegate
+ dataEyeDelegate
  */
-@property (nonatomic, weak, nullable) id thinkingAnalyticsDelegate;
+@property (nonatomic, weak, nullable) id dataEyeDelegate;
 
 @end
 
@@ -481,14 +481,14 @@ NS_ASSUME_NONNULL_BEGIN
 
  @return 事件属性
  */
-- (NSDictionary *)thinkingAnalytics_tableView:(UITableView *)tableView autoTrackPropertiesAtIndexPath:(NSIndexPath *)indexPath;
+- (NSDictionary *)dataEye_tableView:(UITableView *)tableView autoTrackPropertiesAtIndexPath:(NSIndexPath *)indexPath;
 
 /**
  APPID UITableView 事件属性
  
  @return 事件属性
  */
-- (NSDictionary *)thinkingAnalyticsWithAppid_tableView:(UITableView *)tableView autoTrackPropertiesAtIndexPath:(NSIndexPath *)indexPath;
+- (NSDictionary *)dataEyeWithAppid_tableView:(UITableView *)tableView autoTrackPropertiesAtIndexPath:(NSIndexPath *)indexPath;
 
 @optional
 
@@ -497,14 +497,14 @@ NS_ASSUME_NONNULL_BEGIN
 
  @return 事件属性
  */
-- (NSDictionary *)thinkingAnalytics_collectionView:(UICollectionView *)collectionView autoTrackPropertiesAtIndexPath:(NSIndexPath *)indexPath;
+- (NSDictionary *)dataEye_collectionView:(UICollectionView *)collectionView autoTrackPropertiesAtIndexPath:(NSIndexPath *)indexPath;
 
 /**
  APPID UICollectionView 事件属性
 
  @return 事件属性
  */
-- (NSDictionary *)thinkingAnalyticsWithAppid_collectionView:(UICollectionView *)collectionView autoTrackPropertiesAtIndexPath:(NSIndexPath *)indexPath;
+- (NSDictionary *)dataEyeWithAppid_collectionView:(UICollectionView *)collectionView autoTrackPropertiesAtIndexPath:(NSIndexPath *)indexPath;
 
 @end
 

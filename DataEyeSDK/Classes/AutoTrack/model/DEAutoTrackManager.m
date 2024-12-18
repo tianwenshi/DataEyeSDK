@@ -54,12 +54,12 @@ NSString * const DE_EVENT_PROPERTY_ELEMENT_POSITION = @"#element_position";
 }
 
 - (void)trackEventView:(UIView *)view withIndexPath:(NSIndexPath *)indexPath {
-    if (view.thinkingAnalyticsIgnoreView) {
+    if (view.dataEyeIgnoreView) {
         return;
     }
     
     NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
-    properties[DE_EVENT_PROPERTY_ELEMENT_ID] = view.thinkingAnalyticsViewID;
+    properties[DE_EVENT_PROPERTY_ELEMENT_ID] = view.dataEyeViewID;
     properties[DE_EVENT_PROPERTY_ELEMENT_TYPE] = NSStringFromClass([view class]);
     UIViewController *viewController = [self viewControllerForView:view];
     if (viewController != nil) {
@@ -72,7 +72,7 @@ NSString * const DE_EVENT_PROPERTY_ELEMENT_POSITION = @"#element_position";
         }
     }
     
-    NSDictionary *propDict = view.thinkingAnalyticsViewProperties;
+    NSDictionary *propDict = view.dataEyeViewProperties;
     if ([propDict isKindOfClass:[NSDictionary class]]) {
         [properties addEntriesFromDictionary:propDict];
     }
@@ -89,16 +89,16 @@ NSString * const DE_EVENT_PROPERTY_ELEMENT_POSITION = @"#element_position";
             }
             properties[DE_EVENT_PROPERTY_ELEMENT_POSITION] = [NSString stringWithFormat: @"%ld:%ld", (unsigned long)indexPath.section, (unsigned long)indexPath.row];
             
-            if ([tableView.thinkingAnalyticsDelegate conformsToProtocol:@protocol(DEUIViewAutoTrackDelegate)]) {
-                if ([tableView.thinkingAnalyticsDelegate respondsToSelector:@selector(thinkingAnalytics_tableView:autoTrackPropertiesAtIndexPath:)]) {
-                    NSDictionary *dic = [view.thinkingAnalyticsDelegate thinkingAnalytics_tableView:tableView autoTrackPropertiesAtIndexPath:indexPath];
+            if ([tableView.dataEyeDelegate conformsToProtocol:@protocol(DEUIViewAutoTrackDelegate)]) {
+                if ([tableView.dataEyeDelegate respondsToSelector:@selector(dataEye_tableView:autoTrackPropertiesAtIndexPath:)]) {
+                    NSDictionary *dic = [view.dataEyeDelegate dataEye_tableView:tableView autoTrackPropertiesAtIndexPath:indexPath];
                     if ([dic isKindOfClass:[NSDictionary class]]) {
                         [properties addEntriesFromDictionary:dic];
                     }
                 }
                 
-                if ([tableView.thinkingAnalyticsDelegate respondsToSelector:@selector(thinkingAnalyticsWithAppid_tableView:autoTrackPropertiesAtIndexPath:)]) {
-                    propertyWithAppid = [view.thinkingAnalyticsDelegate thinkingAnalyticsWithAppid_tableView:tableView autoTrackPropertiesAtIndexPath:indexPath];
+                if ([tableView.dataEyeDelegate respondsToSelector:@selector(dataEyeWithAppid_tableView:autoTrackPropertiesAtIndexPath:)]) {
+                    propertyWithAppid = [view.dataEyeDelegate dataEyeWithAppid_tableView:tableView autoTrackPropertiesAtIndexPath:indexPath];
                 }
             }
         } else if ([view isKindOfClass:[UICollectionView class]]) {
@@ -110,15 +110,15 @@ NSString * const DE_EVENT_PROPERTY_ELEMENT_POSITION = @"#element_position";
             }
             properties[DE_EVENT_PROPERTY_ELEMENT_POSITION] = [NSString stringWithFormat: @"%ld:%ld", (unsigned long)indexPath.section, (unsigned long)indexPath.row];
             
-            if ([collectionView.thinkingAnalyticsDelegate conformsToProtocol:@protocol(DEUIViewAutoTrackDelegate)]) {
-                if ([collectionView.thinkingAnalyticsDelegate respondsToSelector:@selector(thinkingAnalytics_collectionView:autoTrackPropertiesAtIndexPath:)]) {
-                    NSDictionary *dic = [view.thinkingAnalyticsDelegate thinkingAnalytics_collectionView:collectionView autoTrackPropertiesAtIndexPath:indexPath];
+            if ([collectionView.dataEyeDelegate conformsToProtocol:@protocol(DEUIViewAutoTrackDelegate)]) {
+                if ([collectionView.dataEyeDelegate respondsToSelector:@selector(dataEye_collectionView:autoTrackPropertiesAtIndexPath:)]) {
+                    NSDictionary *dic = [view.dataEyeDelegate dataEye_collectionView:collectionView autoTrackPropertiesAtIndexPath:indexPath];
                     if ([dic isKindOfClass:[NSDictionary class]]) {
                         [properties addEntriesFromDictionary:dic];
                     }
                 }
-                if ([collectionView.thinkingAnalyticsDelegate respondsToSelector:@selector(thinkingAnalyticsWithAppid_collectionView:autoTrackPropertiesAtIndexPath:)]) {
-                    propertyWithAppid = [view.thinkingAnalyticsDelegate thinkingAnalyticsWithAppid_collectionView:collectionView autoTrackPropertiesAtIndexPath:indexPath];
+                if ([collectionView.dataEyeDelegate respondsToSelector:@selector(dataEyeWithAppid_collectionView:autoTrackPropertiesAtIndexPath:)]) {
+                    propertyWithAppid = [view.dataEyeDelegate dataEyeWithAppid_collectionView:collectionView autoTrackPropertiesAtIndexPath:indexPath];
                 }
             }
         }
@@ -141,7 +141,7 @@ NSString * const DE_EVENT_PROPERTY_ELEMENT_POSITION = @"#element_position";
             if ([instance isViewTypeIgnored:[view class]]) {
                 continue;
             }
-            NSDictionary *ignoreViews = view.thinkingAnalyticsIgnoreViewWithAppid;
+            NSDictionary *ignoreViews = view.dataEyeIgnoreViewWithAppid;
             if (ignoreViews != nil && [[ignoreViews objectForKey:appid] isKindOfClass:[NSNumber class]]) {
                 BOOL ignore = [[ignoreViews objectForKey:appid] boolValue];
                 if (ignore)
@@ -152,12 +152,12 @@ NSString * const DE_EVENT_PROPERTY_ELEMENT_POSITION = @"#element_position";
                 continue;
             }
             
-            NSDictionary *viewIDs = view.thinkingAnalyticsViewIDWithAppid;
+            NSDictionary *viewIDs = view.dataEyeViewIDWithAppid;
             if (viewIDs != nil && [viewIDs objectForKey:appid]) {
                 trackProperties[DE_EVENT_PROPERTY_ELEMENT_ID] = [viewIDs objectForKey:appid];
             }
             
-            NSDictionary *viewProperties = view.thinkingAnalyticsViewPropertiesWithAppid;
+            NSDictionary *viewProperties = view.dataEyeViewPropertiesWithAppid;
             if (viewProperties != nil && [viewProperties objectForKey:appid]) {
                 NSDictionary *properties = [viewProperties objectForKey:appid];
                 if ([properties isKindOfClass:[NSDictionary class]]) {
@@ -387,7 +387,7 @@ NSString * const DE_EVENT_PROPERTY_ELEMENT_POSITION = @"#element_position";
 
 + (NSString *)getPosition:(UIView *)view {
     NSString *position = nil;
-    if ([view isKindOfClass:[UIView class]] && view.thinkingAnalyticsIgnoreView) {
+    if ([view isKindOfClass:[UIView class]] && view.dataEyeIgnoreView) {
         return nil;
     }
     
@@ -410,7 +410,7 @@ NSString * const DE_EVENT_PROPERTY_ELEMENT_POSITION = @"#element_position";
 
 + (NSString *)getText:(NSObject *)obj {
     NSString *text = nil;
-    if ([obj isKindOfClass:[UIView class]] && [(UIView *)obj thinkingAnalyticsIgnoreView]) {
+    if ([obj isKindOfClass:[UIView class]] && [(UIView *)obj dataEyeIgnoreView]) {
         return nil;
     }
     
